@@ -15,6 +15,8 @@ ALF is a serialization format for the complete durable state of an AI agent — 
 
 ALF is runtime-neutral by design. It captures the union of data models used by today's agent frameworks so that exporting from any supported runtime preserves all information. The format is decoupled from any specific LLM provider, embedding model, or execution engine.
 
+A html version of the specification is hosted at [agent-life.ai](https://agent-life.ai)
+
 ## Quick Look
 
 An `.alf` file is a standard ZIP archive:
