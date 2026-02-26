@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/identity.schema.json",
   "title": "ALF Identity",
-  "description": "Layer 2: Identity and persona. Dual representation — structured fields (machine-readable) and prose blocks (LLM-interpreted). See §3.2 of the requirements specification.",
+  "description": "Layer 2: Identity and persona. Dual representation — structured fields (machine-readable) and prose blocks (LLM-interpreted). See §3.2 of the ALF Specification.",
   "type": "object",
   "required": [
     "id",

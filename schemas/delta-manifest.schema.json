@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/delta-manifest.schema.json",
   "title": "ALF Delta Manifest",
-  "description": "Manifest for an incremental sync delta bundle (.alf-delta file). Contains sync cursors (sequence numbers) and indicates which layers have changes. See §4.3 of the requirements specification.",
+  "description": "Manifest for an incremental sync delta bundle (.alf-delta file). Contains sync cursors (sequence numbers) and indicates which layers have changes. See §4.3 of the ALF Specification.",
   "type": "object",
   "required": [
     "alf_version",

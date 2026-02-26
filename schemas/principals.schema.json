@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/principals.schema.json",
   "title": "ALF Principals",
-  "description": "Layer 3: Principals and user context. An array of entities the agent takes direction from — human users or managing agents. See §3.3 of the requirements specification.",
+  "description": "Layer 3: Principals and user context. An array of entities the agent takes direction from — human users or managing agents. See §3.3 of the ALF Specification.",
   "type": "object",
   "required": ["principals"],
   "properties": {

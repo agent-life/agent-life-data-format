@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/manifest.schema.json",
   "title": "ALF Snapshot Manifest",
-  "description": "Top-level manifest for a complete ALF snapshot (.alf file). Contains format version, agent metadata, runtime hints, sync cursor, and layer inventory with partition details. See §4.2 of the requirements specification.",
+  "description": "Top-level manifest for a complete ALF snapshot (.alf file). Contains format version, agent metadata, runtime hints, sync cursor, and layer inventory with partition details. See §4.2 of the ALF Specification.",
   "type": "object",
   "required": [
     "alf_version",
@@ -185,12 +185,27 @@
           "properties": {
             "count": {
               "type": "integer",
-              "description": "Number of attachment references.",
+              "description": "Total number of artifact references (Tier 2 + Tier 3).",
               "minimum": 0
             },
-            "total_size_bytes": {
+            "included_count": {
               "type": "integer",
-              "description": "Total size of all referenced attachments in bytes.",
+              "description": "Number of Tier 2 artifacts included in the archive under artifacts/.",
+              "minimum": 0
+            },
+            "included_size_bytes": {
+              "type": "integer",
+              "description": "Total size of Tier 2 (included) artifacts in bytes.",
+              "minimum": 0
+            },
+            "referenced_count": {
+              "type": "integer",
+              "description": "Number of Tier 3 artifacts cataloged by reference only.",
+              "minimum": 0
+            },
+            "referenced_size_bytes": {
+              "type": "integer",
+              "description": "Total size of Tier 3 (reference-only) artifacts in bytes.",
               "minimum": 0
             },
             "file": {

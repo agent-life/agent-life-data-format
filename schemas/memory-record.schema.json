@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/memory-record.schema.json",
   "title": "ALF Memory Record",
-  "description": "A single memory record in the Agent Life Format. Memory records are stored as JSONL (one record per line) within time-based partition files. See §3.1.1 of the requirements specification.",
+  "description": "A single memory record in the Agent Life Format. Memory records are stored as JSONL (one record per line) within time-based partition files. See §3.1.1 of the ALF Specification.",
   "type": "object",
   "required": [
     "id",
@@ -87,6 +87,13 @@
       "description": "Pre-computed embedding vectors, tagged by model. See §3.1.6. Embeddings are always derivative of content and can be recomputed.",
       "items": {
         "$ref": "#/$defs/Embedding"
+      }
+    },
+    "related_records": {
+      "type": "array",
+      "description": "Typed links to other memory records, forming a memory graph. See §3.1.12. Relation types are free-form strings with well-known conventions (caused_by, contradicts, elaborates_on, derived_from, caused, related_to).",
+      "items": {
+        "$ref": "#/$defs/RelatedRecord"
       }
     },
     "raw_source_format": {
@@ -238,6 +245,24 @@
           "description": "Who computed this embedding. Known values: runtime, sync_service, import_adapter. Validators SHOULD warn on unknown values but MUST NOT reject them — unknown sources are treated as 'runtime' per §8.2.",
           "enum": ["runtime", "sync_service", "import_adapter"],
           "x-unknown-default": "runtime"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RelatedRecord": {
+      "title": "Related Record",
+      "description": "A typed link to another memory record, forming part of a memory graph. See §3.1.12. Relation types are free-form strings — well-known values include caused_by, caused, contradicts, elaborates_on, derived_from, related_to.",
+      "type": "object",
+      "required": ["id", "relation"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID of the related memory record. Dangling references (targets that don't exist) are tolerated.",
+          "format": "uuid"
+        },
+        "relation": {
+          "type": "string",
+          "description": "The type of relationship. Free-form — runtimes may define their own relation types. Well-known values: caused_by, caused, contradicts, elaborates_on, derived_from, related_to."
         }
       },
       "additionalProperties": true

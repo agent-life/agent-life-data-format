@@ -2,13 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agent-life.ai/schemas/v1/attachments.schema.json",
   "title": "ALF Attachments",
-  "description": "Binary attachment reference index. Attachments are cataloged by reference (filename, size, hash) — the actual binary files are NOT stored in the ALF archive. See §3.1.9 of the requirements specification.",
+  "description": "Workspace artifact index. Artifacts are classified into three tiers: Tier 1 (managed agent state) goes in raw/, Tier 2 (portable artifacts under size threshold) are included in artifacts/ within the archive, Tier 3 (large artifacts) are cataloged by reference only. See §3.1.9 of the ALF Specification.",
   "type": "object",
   "required": ["attachments"],
   "properties": {
+    "artifact_size_threshold": {
+      "type": "integer",
+      "description": "The size threshold in bytes used to classify Tier 2 (included) vs. Tier 3 (reference-only) artifacts. Default: 102400 (100 KB).",
+      "default": 102400,
+      "minimum": 0
+    },
     "attachments": {
       "type": "array",
-      "description": "List of attachment references.",
+      "description": "List of workspace artifact references. Includes both Tier 2 (included in archive) and Tier 3 (reference-only) artifacts.",
       "items": {
         "$ref": "#/$defs/AttachmentReference"
       },
@@ -19,7 +25,7 @@
   "$defs": {
     "AttachmentReference": {
       "title": "Attachment Reference",
-      "description": "A reference to a binary file that the agent's memories reference. The file itself is not included in the archive. See §3.1.9.",
+      "description": "A reference to a workspace artifact. If archive_path is non-null (Tier 2), the file is included in the archive under artifacts/. If archive_path is null (Tier 3), the file is reference-only.",
       "type": "object",
       "required": [
         "id",
@@ -28,12 +34,13 @@
         "size_bytes",
         "hash",
         "source_path",
+        "archive_path",
         "remote_ref"
       ],
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for this attachment reference.",
+          "description": "Unique identifier for this artifact reference.",
           "format": "uuid"
         },
         "filename": {
@@ -42,7 +49,7 @@
         },
         "media_type": {
           "type": "string",
-          "description": "MIME type (e.g., 'image/png', 'application/pdf')."
+          "description": "MIME type (e.g., 'image/png', 'text/csv', 'text/x-python', 'application/pdf')."
         },
         "size_bytes": {
           "type": "integer",
@@ -56,14 +63,18 @@
           "type": "string",
           "description": "Path relative to the runtime workspace where the file was found."
         },
+        "archive_path": {
+          "type": ["string", "null"],
+          "description": "Path within the ALF archive if the file is included (Tier 2, e.g., 'artifacts/shares_tracker.csv'). Null if reference-only (Tier 3)."
+        },
         "remote_ref": {
           "type": ["string", "null"],
-          "description": "URL for future online storage. Null in initial releases. When the sync service adds binary storage, this is populated with a content-addressable URL.",
+          "description": "URL for future online storage. Null in initial releases. When the sync service adds artifact storage, this is populated with a content-addressable URL.",
           "format": "uri"
         },
         "referenced_by": {
           "type": "array",
-          "description": "Memory record IDs that reference this attachment.",
+          "description": "Memory record IDs that reference this artifact.",
           "items": {
             "type": "string",
             "format": "uuid"
@@ -74,7 +85,7 @@
     },
     "ContentHash": {
       "title": "Content Hash",
-      "description": "Integrity hash of the binary file content.",
+      "description": "Integrity hash of the file content.",
       "type": "object",
       "required": ["algorithm", "value"],
       "properties": {
