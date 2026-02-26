@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/identity.schema.json",
+  "title": "ALF Identity",
+  "description": "Layer 2: Identity and persona. Dual representation — structured fields (machine-readable) and prose blocks (LLM-interpreted). See §3.2 of the requirements specification.",
+  "type": "object",
+  "required": [
+    "id",
+    "agent_id",
+    "version",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this identity document.",
+      "format": "uuid"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "The agent this identity belongs to.",
+      "format": "uuid"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Identity version number. Incremented on every change. Used by memory records for lineage tracking (§3.1.10).",
+      "minimum": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "When this version was created.",
+      "format": "date-time"
+    },
+    "structured": {
+      "$ref": "#/$defs/StructuredIdentity"
+    },
+    "prose": {
+      "$ref": "#/$defs/ProseIdentity"
+    },
+    "source_format": {
+      "type": "string",
+      "description": "The runtime that originally defined this identity (e.g., 'openclaw', 'zeroclaw')."
+    },
+    "raw_source": {
+      "type": "object",
+      "description": "Opaque blob preserving the original runtime-specific identity representation for lossless round-trip."
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "StructuredIdentity": {
+      "title": "Structured Identity",
+      "description": "Machine-readable identity fields. Based on AIEOS v1.1 as a compatible superset. See §3.2.2, §3.2.6.",
+      "type": "object",
+      "properties": {
+        "names": {
+          "$ref": "#/$defs/Names"
+        },
+        "role": {
+          "type": "string",
+          "description": "Short description of the agent's role."
+        },
+        "goals": {
+          "type": "array",
+          "description": "Agent's goals and motivations. Maps to AIEOS motivations.goals.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "psychology": {
+          "$ref": "#/$defs/Psychology"
+        },
+        "linguistics": {
+          "$ref": "#/$defs/Linguistics"
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Agent capabilities for task routing and tool discovery. See §3.2.6.",
+          "items": {
+            "$ref": "#/$defs/Capability"
+          }
+        },
+        "sub_agents": {
+          "type": "array",
+          "description": "Roster of sub-agents this agent manages. See §3.2.4.",
+          "items": {
+            "$ref": "#/$defs/SubAgent"
+          }
+        },
+        "aieos_extensions": {
+          "type": "object",
+          "description": "Passthrough for AIEOS fields not promoted to first-class (MBTI, D&D alignment, physicality, bio, origin). Preserved for lossless round-trip. See §3.2.6."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Names": {
+      "title": "Names",
+      "description": "Agent name variants. Maps to AIEOS identity.names.",
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "The agent's primary/display name."
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Short nickname."
+        },
+        "full": {
+          "type": "string",
+          "description": "Full formal name."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Psychology": {
+      "title": "Psychology",
+      "description": "Personality and behavioral traits. Promoted AIEOS fields only — MBTI and D&D alignment are in aieos_extensions. See §3.2.6.",
+      "type": "object",
+      "properties": {
+        "neural_matrix": {
+          "type": "object",
+          "description": "AIEOS neural matrix — key/value pairs of trait names to float scores (0.0–1.0). Used by ZeroClaw for behavior tuning.",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          }
+        },
+        "personality_traits": {
+          "$ref": "#/$defs/PersonalityTraits"
+        },
+        "moral_alignment": {
+          "type": "string",
+          "description": "Moral alignment label (e.g., 'Neutral Good'). Preserved from AIEOS but stored in aieos_extensions for passthrough — this field exists here for adapters that use it directly."
+        },
+        "mbti": {
+          "type": "string",
+          "description": "MBTI type (e.g., 'ENTP'). Preserved from AIEOS but stored in aieos_extensions for passthrough — this field exists here for adapters that use it directly."
+        }
+      },
+      "additionalProperties": true
+    },
+    "PersonalityTraits": {
+      "title": "Personality Traits",
+      "description": "Personality framework scores. OCEAN/Big Five is the promoted framework. See §3.2.6.",
+      "type": "object",
+      "required": ["framework", "scores"],
+      "properties": {
+        "framework": {
+          "type": "string",
+          "description": "Which personality framework these scores use (e.g., 'OCEAN')."
+        },
+        "scores": {
+          "type": "object",
+          "description": "Framework-specific trait scores. For OCEAN: openness, conscientiousness, extraversion, agreeableness, neuroticism — each 0.0–1.0.",
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "Linguistics": {
+      "title": "Linguistics",
+      "description": "Language style and output behavior. Maps to AIEOS linguistics.text_style and idiolect. See §3.2.6.",
+      "type": "object",
+      "properties": {
+        "formality_level": {
+          "type": "number",
+          "description": "0.0 (very casual) to 1.0 (very formal).",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "verbosity": {
+          "type": "number",
+          "description": "0.0 (very terse) to 1.0 (very verbose).",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "humor_level": {
+          "type": "number",
+          "description": "0.0 (no humor) to 1.0 (very humorous).",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "slang_usage": {
+          "type": "boolean",
+          "description": "Whether the agent uses slang."
+        },
+        "preferred_language": {
+          "type": "string",
+          "description": "BCP-47 language tag (e.g., 'en', 'ja')."
+        },
+        "idiolect": {
+          "$ref": "#/$defs/Idiolect"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Idiolect": {
+      "title": "Idiolect",
+      "description": "Agent-specific speech patterns. Maps to AIEOS linguistics.idiolect.",
+      "type": "object",
+      "properties": {
+        "catchphrases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "verbal_tics": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "avoided_words": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "Capability": {
+      "title": "Capability",
+      "description": "A single agent capability. Used for task routing and tool discovery. See §3.2.6 for portability annotations.",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Capability identifier (e.g., 'web_search', 'code_generation', 'docker_management')."
+        },
+        "description": {
+          "type": "string",
+          "description": "What this capability does."
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Priority ranking. 1 = highest.",
+          "minimum": 1
+        },
+        "portability": {
+          "type": "string",
+          "description": "Whether this capability is intrinsic to the LLM (always available) or dependent on the host environment. Default: 'intrinsic'.",
+          "enum": ["intrinsic", "host_dependent"],
+          "default": "intrinsic"
+        },
+        "host_requirements": {
+          "type": "string",
+          "description": "For host_dependent capabilities, a brief description of what the host must provide (e.g., 'Docker Engine accessible via CLI', 'macOS with AppleScript support'). Informational — helps the importing adapter and user understand what's needed."
+        },
+        "credential_ids": {
+          "type": "array",
+          "description": "IDs of credentials (from Layer 4) required by this capability. The reverse linkage (credential to capability) is via capabilities_granted on the credential schema.",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "SubAgent": {
+      "title": "Sub-Agent",
+      "description": "A sub-agent in the managing agent's roster. See §3.2.4.",
+      "type": "object",
+      "required": ["agent_id", "name", "capabilities", "status"],
+      "properties": {
+        "agent_id": {
+          "type": ["string", "null"],
+          "description": "References the sub-agent's own .alf file if it has persistent state. Null for ephemeral sub-agents.",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the sub-agent."
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief summary of what this sub-agent does."
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "What the sub-agent can do, used for task routing.",
+          "items": {
+            "$ref": "#/$defs/Capability"
+          }
+        },
+        "model_hints": {
+          "type": "object",
+          "description": "Model hints for the sub-agent. See §3.2.5.",
+          "properties": {
+            "primary_model": {
+              "type": "string",
+              "description": "Model the sub-agent spent most of its life on."
+            },
+            "last_model": {
+              "type": "string",
+              "description": "Most recently used model."
+            }
+          },
+          "additionalProperties": true
+        },
+        "routing_hints": {
+          "type": "string",
+          "description": "Prose guidance for when and how to use this sub-agent."
+        },
+        "status": {
+          "type": "string",
+          "description": "Known values: active, inactive, unavailable.",
+          "enum": ["active", "inactive", "unavailable"],
+          "x-unknown-default": "active"
+        },
+        "last_invoked_at": {
+          "type": ["string", "null"],
+          "description": "When the managing agent last delegated a task to this sub-agent.",
+          "format": "date-time"
+        },
+        "performance_notes": {
+          "type": "string",
+          "description": "Managing agent's observations about the sub-agent's strengths and weaknesses."
+        }
+      },
+      "additionalProperties": true
+    },
+    "ProseIdentity": {
+      "title": "Prose Identity",
+      "description": "Rich, contextual identity blocks interpreted by the LLM at runtime. Based on OpenClaw's SOUL.md / IDENTITY.md pattern. See §3.2.1.",
+      "type": "object",
+      "properties": {
+        "soul": {
+          "type": "string",
+          "description": "Full content of SOUL.md or equivalent — core behavioral instructions and values."
+        },
+        "operating_instructions": {
+          "type": "string",
+          "description": "Full content of AGENTS.md or equivalent — operating rules and constraints."
+        },
+        "identity_profile": {
+          "type": "string",
+          "description": "Full content of IDENTITY.md or equivalent — identity description and backstory."
+        },
+        "custom_blocks": {
+          "type": "object",
+          "description": "Additional prose blocks keyed by name. Standard keys: boot_checklist, heartbeat_checklist, tools_guidance.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

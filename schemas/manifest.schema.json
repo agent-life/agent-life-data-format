@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/manifest.schema.json",
+  "title": "ALF Snapshot Manifest",
+  "description": "Top-level manifest for a complete ALF snapshot (.alf file). Contains format version, agent metadata, runtime hints, sync cursor, and layer inventory with partition details. See §4.2 of the requirements specification.",
+  "type": "object",
+  "required": [
+    "alf_version",
+    "created_at",
+    "agent",
+    "layers"
+  ],
+  "properties": {
+    "alf_version": {
+      "type": "string",
+      "description": "Semantic version of the ALF format (e.g., '1.0.0'). See §8.2 for compatibility rules.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "When this snapshot was created.",
+      "format": "date-time"
+    },
+    "agent": {
+      "$ref": "#/$defs/AgentMetadata"
+    },
+    "runtime_hints": {
+      "$ref": "#/$defs/RuntimeHints"
+    },
+    "sync": {
+      "$ref": "#/$defs/SyncCursor"
+    },
+    "layers": {
+      "$ref": "#/$defs/LayerInventory"
+    },
+    "raw_sources": {
+      "type": "array",
+      "description": "List of runtime identifiers whose raw files are preserved in the raw/ directory.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "checksum": {
+      "type": "string",
+      "description": "Integrity checksum of the archive contents in 'algorithm:hex' format (e.g., 'sha256:abcdef...').",
+      "pattern": "^[a-z0-9]+:[a-f0-9]+$"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "AgentMetadata": {
+      "title": "Agent Metadata",
+      "description": "Core identifying information about the agent.",
+      "type": "object",
+      "required": ["id", "name", "source_runtime"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Globally unique agent identifier. UUID.",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the agent."
+        },
+        "source_runtime": {
+          "type": "string",
+          "description": "The agent framework this snapshot was exported from (e.g., 'openclaw', 'zeroclaw')."
+        },
+        "source_runtime_version": {
+          "type": "string",
+          "description": "Version of the source runtime."
+        }
+      },
+      "additionalProperties": true
+    },
+    "RuntimeHints": {
+      "title": "Runtime Hints",
+      "description": "Factual metadata about what model the agent ran on. Hints, not prescriptive requirements. See §3.2.5.",
+      "type": "object",
+      "required": ["primary_model", "last_model"],
+      "properties": {
+        "primary_model": {
+          "type": "string",
+          "description": "The model the agent spent most of its life on, in 'provider/model' format."
+        },
+        "last_model": {
+          "type": "string",
+          "description": "The most recently used model. May differ from primary_model."
+        },
+        "provider": {
+          "type": "string",
+          "description": "The LLM provider (e.g., 'anthropic', 'openai', 'openrouter')."
+        },
+        "context_window": {
+          "type": "integer",
+          "description": "Context window size in tokens.",
+          "minimum": 1
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "description": "Free-form notes about the runtime configuration."
+        }
+      },
+      "additionalProperties": true
+    },
+    "SyncCursor": {
+      "title": "Sync Cursor",
+      "description": "Tracks the sync state of this snapshot. See §4.3.1.",
+      "type": "object",
+      "required": ["last_sequence"],
+      "properties": {
+        "last_sequence": {
+          "type": "integer",
+          "description": "Monotonic sequence number of the most recent sync operation incorporated into this snapshot.",
+          "minimum": 0
+        },
+        "last_sync_at": {
+          "type": "string",
+          "description": "Timestamp of the most recent sync operation.",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LayerInventory": {
+      "title": "Layer Inventory",
+      "description": "Inventory of all data layers present in the snapshot.",
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "object",
+          "required": ["version", "file"],
+          "properties": {
+            "version": {
+              "type": "integer",
+              "description": "Current identity version number.",
+              "minimum": 1
+            },
+            "file": {
+              "type": "string",
+              "description": "Path to the identity JSON file within the archive."
+            }
+          },
+          "additionalProperties": true
+        },
+        "principals": {
+          "type": "object",
+          "required": ["count", "file"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description": "Number of principals.",
+              "minimum": 0
+            },
+            "file": {
+              "type": "string",
+              "description": "Path to the principals JSON file within the archive."
+            }
+          },
+          "additionalProperties": true
+        },
+        "credentials": {
+          "type": "object",
+          "required": ["count", "file"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description": "Number of credential records.",
+              "minimum": 0
+            },
+            "file": {
+              "type": "string",
+              "description": "Path to the credentials JSON file within the archive."
+            }
+          },
+          "additionalProperties": true
+        },
+        "memory": {
+          "$ref": "#/$defs/MemoryInventory"
+        },
+        "attachments": {
+          "type": "object",
+          "required": ["count", "file"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description": "Number of attachment references.",
+              "minimum": 0
+            },
+            "total_size_bytes": {
+              "type": "integer",
+              "description": "Total size of all referenced attachments in bytes.",
+              "minimum": 0
+            },
+            "file": {
+              "type": "string",
+              "description": "Path to the attachments JSON file within the archive."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "MemoryInventory": {
+      "title": "Memory Inventory",
+      "description": "Metadata about the memory layer, including the partition inventory.",
+      "type": "object",
+      "required": ["record_count", "index_file", "partitions"],
+      "properties": {
+        "record_count": {
+          "type": "integer",
+          "description": "Total number of memory records across all partitions.",
+          "minimum": 0
+        },
+        "index_file": {
+          "type": "string",
+          "description": "Path to the memory index file within the archive."
+        },
+        "has_embeddings": {
+          "type": "boolean",
+          "description": "Whether any partition contains pre-computed embeddings."
+        },
+        "has_raw_source": {
+          "type": "boolean",
+          "description": "Whether raw source files are preserved in the raw/ directory."
+        },
+        "partitions": {
+          "type": "array",
+          "description": "Ordered list of time-based memory partitions. See §4.1.1.",
+          "items": {
+            "$ref": "#/$defs/MemoryPartition"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "MemoryPartition": {
+      "title": "Memory Partition",
+      "description": "A time-based memory partition. Sealed partitions are immutable and can be cached aggressively. See §4.1.1.",
+      "type": "object",
+      "required": ["file", "from", "record_count", "sealed"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Path to the JSONL partition file within the archive."
+        },
+        "from": {
+          "type": "string",
+          "description": "Start date of the partition's time range (inclusive). ISO 8601 date.",
+          "format": "date"
+        },
+        "to": {
+          "type": ["string", "null"],
+          "description": "End date of the partition's time range (inclusive). Null for the current (unsealed) partition.",
+          "format": "date"
+        },
+        "record_count": {
+          "type": "integer",
+          "description": "Number of memory records in this partition.",
+          "minimum": 0
+        },
+        "sealed": {
+          "type": "boolean",
+          "description": "Whether this partition is immutable. Sealed partitions cover completed time periods and never change."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

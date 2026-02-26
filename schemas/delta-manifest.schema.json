@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/delta-manifest.schema.json",
+  "title": "ALF Delta Manifest",
+  "description": "Manifest for an incremental sync delta bundle (.alf-delta file). Contains sync cursors (sequence numbers) and indicates which layers have changes. See §4.3 of the requirements specification.",
+  "type": "object",
+  "required": [
+    "alf_version",
+    "created_at",
+    "agent",
+    "sync",
+    "changes"
+  ],
+  "properties": {
+    "alf_version": {
+      "type": "string",
+      "description": "Semantic version of the ALF format.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "When this delta was created.",
+      "format": "date-time"
+    },
+    "agent": {
+      "type": "object",
+      "description": "Agent this delta applies to.",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Agent identifier. Must match the snapshot this delta applies to.",
+          "format": "uuid"
+        },
+        "source_runtime": {
+          "type": "string",
+          "description": "The runtime that produced this delta."
+        }
+      },
+      "additionalProperties": true
+    },
+    "sync": {
+      "$ref": "#/$defs/DeltaSyncCursor"
+    },
+    "changes": {
+      "$ref": "#/$defs/ChangeInventory"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "DeltaSyncCursor": {
+      "title": "Delta Sync Cursor",
+      "description": "Sync cursor for a delta bundle. Identifies the base snapshot this delta applies to and the new state after applying it. See §4.3.1.",
+      "type": "object",
+      "required": ["base_sequence", "new_sequence"],
+      "properties": {
+        "base_sequence": {
+          "type": "integer",
+          "description": "Sequence number of the snapshot or last delta this one builds on. The client's 'I last synced at' value.",
+          "minimum": 0
+        },
+        "new_sequence": {
+          "type": "integer",
+          "description": "Sequence number after applying this delta. Assigned by the server on receipt.",
+          "minimum": 0
+        },
+        "base_timestamp": {
+          "type": "string",
+          "description": "Timestamp corresponding to the base sequence.",
+          "format": "date-time"
+        },
+        "new_timestamp": {
+          "type": "string",
+          "description": "Timestamp corresponding to the new sequence.",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ChangeInventory": {
+      "title": "Change Inventory",
+      "description": "Which layers have changes in this delta. Only layers with changes are present in the delta bundle.",
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "object",
+          "description": "Present if the identity changed.",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to the identity JSON file within the delta bundle."
+            },
+            "new_version": {
+              "type": "integer",
+              "description": "New identity version number after this delta.",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": true
+        },
+        "principals": {
+          "type": "object",
+          "description": "Present if any principal profiles changed.",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to the principals JSON file within the delta bundle."
+            },
+            "changed_ids": {
+              "type": "array",
+              "description": "IDs of principals that changed.",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "credentials": {
+          "type": "object",
+          "description": "Present if credentials changed.",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to the credentials JSON file within the delta bundle."
+            }
+          },
+          "additionalProperties": true
+        },
+        "memory": {
+          "type": "object",
+          "description": "Present if memory records were created, updated, or deleted.",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to the delta JSONL file within the delta bundle."
+            },
+            "record_count": {
+              "type": "integer",
+              "description": "Number of delta records (creates + updates + deletes).",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "DeltaMemoryRecord": {
+      "title": "Delta Memory Record",
+      "description": "A memory record within a delta bundle. Extends the base memory record with an operation field indicating the change type. Each line in the delta JSONL file is one of these.",
+      "type": "object",
+      "required": ["operation"],
+      "allOf": [
+        {
+          "properties": {
+            "operation": {
+              "type": "string",
+              "description": "The change operation. 'create' for new records, 'update' for modified records, 'delete' for soft-deleted records (tombstone).",
+              "enum": ["create", "update", "delete"]
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}

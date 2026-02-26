@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/principals.schema.json",
+  "title": "ALF Principals",
+  "description": "Layer 3: Principals and user context. An array of entities the agent takes direction from — human users or managing agents. See §3.3 of the requirements specification.",
+  "type": "object",
+  "required": ["principals"],
+  "properties": {
+    "principals": {
+      "type": "array",
+      "description": "List of principals. A single-user agent has exactly one entry with principal_type 'human'.",
+      "items": {
+        "$ref": "#/$defs/Principal"
+      },
+      "minItems": 0
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "Principal": {
+      "title": "Principal",
+      "description": "An entity the agent takes direction from. See §3.3.1.",
+      "type": "object",
+      "required": ["id", "principal_type", "profile"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this principal relationship.",
+          "format": "uuid"
+        },
+        "principal_type": {
+          "type": "string",
+          "description": "Type of principal. Known values: human, agent. Validators SHOULD warn on unknown values but MUST NOT reject them — unknown types are treated as 'human' per §8.2.",
+          "enum": ["human", "agent"],
+          "x-unknown-default": "human"
+        },
+        "agent_id": {
+          "type": ["string", "null"],
+          "description": "For agent-type principals, the managing agent's ID (resolvable to another .alf if it exists). Null for human principals.",
+          "format": "uuid"
+        },
+        "profile": {
+          "$ref": "#/$defs/PrincipalProfile"
+        }
+      },
+      "additionalProperties": true
+    },
+    "PrincipalProfile": {
+      "title": "Principal Profile",
+      "description": "Profile and preferences for a principal. Versioned independently. See §3.3.3.",
+      "type": "object",
+      "required": ["id", "agent_id", "principal_id", "version", "updated_at"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this profile document.",
+          "format": "uuid"
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "The agent this profile belongs to.",
+          "format": "uuid"
+        },
+        "principal_id": {
+          "type": "string",
+          "description": "The principal this profile describes.",
+          "format": "uuid"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Profile version number. Incremented on every change.",
+          "minimum": 1
+        },
+        "updated_at": {
+          "type": "string",
+          "description": "When this version was created.",
+          "format": "date-time"
+        },
+        "structured": {
+          "$ref": "#/$defs/StructuredProfile"
+        },
+        "prose": {
+          "$ref": "#/$defs/ProseProfile"
+        },
+        "source_format": {
+          "type": "string",
+          "description": "The runtime that originally defined this profile."
+        },
+        "raw_source": {
+          "type": "object",
+          "description": "Opaque blob preserving the original runtime-specific profile for lossless round-trip."
+        }
+      },
+      "additionalProperties": true
+    },
+    "StructuredProfile": {
+      "title": "Structured Profile",
+      "description": "Machine-readable principal profile fields.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The principal's name."
+        },
+        "principal_type": {
+          "type": "string",
+          "description": "Echoed from the parent principal for convenience."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone identifier (e.g., 'America/Los_Angeles')."
+        },
+        "locale": {
+          "type": "string",
+          "description": "BCP-47 locale tag (e.g., 'en-US')."
+        },
+        "communication_preferences": {
+          "type": "object",
+          "description": "How the principal prefers to interact.",
+          "properties": {
+            "tone": {
+              "type": "string",
+              "description": "Preferred communication tone (e.g., 'casual', 'formal')."
+            },
+            "response_length": {
+              "type": "string",
+              "description": "Preferred response length (e.g., 'concise', 'detailed')."
+            },
+            "formatting": {
+              "type": "string",
+              "description": "Preferred formatting style (e.g., 'minimal markdown', 'rich formatting')."
+            }
+          },
+          "additionalProperties": true
+        },
+        "work_context": {
+          "type": "object",
+          "description": "Professional context. For agent-type principals, describes delegation and escalation preferences.",
+          "properties": {
+            "role": {
+              "type": "string"
+            },
+            "company": {
+              "type": "string"
+            },
+            "projects": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "relationships": {
+          "type": "array",
+          "description": "Named relationships relevant to this principal.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "custom_fields": {
+          "type": "object",
+          "description": "Runtime-specific or user-defined fields for round-trip fidelity.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "ProseProfile": {
+      "title": "Prose Profile",
+      "description": "Rich text profile blocks interpreted by the LLM at runtime.",
+      "type": "object",
+      "properties": {
+        "user_profile": {
+          "type": "string",
+          "description": "Full content of USER.md or equivalent."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

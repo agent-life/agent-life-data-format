@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/attachments.schema.json",
+  "title": "ALF Attachments",
+  "description": "Binary attachment reference index. Attachments are cataloged by reference (filename, size, hash) — the actual binary files are NOT stored in the ALF archive. See §3.1.9 of the requirements specification.",
+  "type": "object",
+  "required": ["attachments"],
+  "properties": {
+    "attachments": {
+      "type": "array",
+      "description": "List of attachment references.",
+      "items": {
+        "$ref": "#/$defs/AttachmentReference"
+      },
+      "minItems": 0
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "AttachmentReference": {
+      "title": "Attachment Reference",
+      "description": "A reference to a binary file that the agent's memories reference. The file itself is not included in the archive. See §3.1.9.",
+      "type": "object",
+      "required": [
+        "id",
+        "filename",
+        "media_type",
+        "size_bytes",
+        "hash",
+        "source_path",
+        "remote_ref"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this attachment reference.",
+          "format": "uuid"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Original filename."
+        },
+        "media_type": {
+          "type": "string",
+          "description": "MIME type (e.g., 'image/png', 'application/pdf')."
+        },
+        "size_bytes": {
+          "type": "integer",
+          "description": "File size at time of export.",
+          "minimum": 0
+        },
+        "hash": {
+          "$ref": "#/$defs/ContentHash"
+        },
+        "source_path": {
+          "type": "string",
+          "description": "Path relative to the runtime workspace where the file was found."
+        },
+        "remote_ref": {
+          "type": ["string", "null"],
+          "description": "URL for future online storage. Null in initial releases. When the sync service adds binary storage, this is populated with a content-addressable URL.",
+          "format": "uri"
+        },
+        "referenced_by": {
+          "type": "array",
+          "description": "Memory record IDs that reference this attachment.",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ContentHash": {
+      "title": "Content Hash",
+      "description": "Integrity hash of the binary file content.",
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Hash algorithm. Default: 'sha256'.",
+          "default": "sha256"
+        },
+        "value": {
+          "type": "string",
+          "description": "Hex-encoded hash value."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

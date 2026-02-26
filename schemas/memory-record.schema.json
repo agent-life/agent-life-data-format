@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-life.ai/schemas/v1/memory-record.schema.json",
+  "title": "ALF Memory Record",
+  "description": "A single memory record in the Agent Life Format. Memory records are stored as JSONL (one record per line) within time-based partition files. See §3.1.1 of the requirements specification.",
+  "type": "object",
+  "required": [
+    "id",
+    "agent_id",
+    "content",
+    "memory_type",
+    "source",
+    "temporal",
+    "status",
+    "namespace"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique, time-sortable identifier. MUST be a UUID v7.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "The agent this memory belongs to. UUID.",
+      "format": "uuid"
+    },
+    "content": {
+      "type": "string",
+      "description": "The memory text. Plain text or Markdown. This is the source of truth — embeddings are always derivative of this field.",
+      "minLength": 1
+    },
+    "memory_type": {
+      "type": "string",
+      "description": "Cognitive category of this memory. Known values: semantic (facts/knowledge), episodic (interaction records), procedural (rules/workflows), preference (user preferences), summary (condensed narratives). Validators SHOULD warn on unknown values but MUST NOT reject them — unknown types are treated as 'semantic' per §8.2.",
+      "enum": ["semantic", "episodic", "procedural", "preference", "summary"],
+      "x-unknown-default": "semantic"
+    },
+    "category": {
+      "type": "string",
+      "description": "Runtime-defined category for adapter round-trip fidelity (e.g., ZeroClaw's 'conversation', 'daily', 'core'). Free-form — not validated against an enum."
+    },
+    "source": {
+      "$ref": "#/$defs/SourceProvenance"
+    },
+    "temporal": {
+      "$ref": "#/$defs/TemporalMetadata"
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle status. Known values: active, superseded, archived, deleted. Validators SHOULD warn on unknown values but MUST NOT reject them — unknown statuses are treated as 'active' per §8.2.",
+      "enum": ["active", "superseded", "archived", "deleted"],
+      "x-unknown-default": "active"
+    },
+    "supersedes": {
+      "type": "string",
+      "description": "ID of the memory record this one replaces, forming a consolidation audit trail. See §3.1.8.",
+      "format": "uuid"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence score if the source runtime provides one.",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "entities": {
+      "type": "array",
+      "description": "Extracted entities referenced by this memory. See §3.1.5.",
+      "items": {
+        "$ref": "#/$defs/EntityReference"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "User or agent-defined tags for filtering.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "namespace": {
+      "type": "string",
+      "description": "Scoping namespace. Default: 'default'. Use 'principal_context:{principal_id}' for principal-scoped memories. See §3.3.2.",
+      "default": "default"
+    },
+    "embeddings": {
+      "type": "array",
+      "description": "Pre-computed embedding vectors, tagged by model. See §3.1.6. Embeddings are always derivative of content and can be recomputed.",
+      "items": {
+        "$ref": "#/$defs/Embedding"
+      }
+    },
+    "raw_source_format": {
+      "type": "object",
+      "description": "Opaque blob preserving the original runtime-specific representation for lossless round-trip. Structure is runtime-dependent and not validated by this schema."
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "SourceProvenance": {
+      "title": "Source Provenance",
+      "description": "Records where and how a memory was created. See §3.1.3.",
+      "type": "object",
+      "required": ["runtime"],
+      "properties": {
+        "runtime": {
+          "type": "string",
+          "description": "Which agent framework produced this memory (e.g., 'openclaw', 'zeroclaw')."
+        },
+        "runtime_version": {
+          "type": "string",
+          "description": "Version of the source runtime."
+        },
+        "origin": {
+          "type": "string",
+          "description": "The native storage location or mechanism (e.g., 'daily_log', 'memory_md', 'sqlite_store', 'agent_tool_call')."
+        },
+        "origin_file": {
+          "type": "string",
+          "description": "Path to the original file if the memory was extracted from a file."
+        },
+        "extraction_method": {
+          "type": "string",
+          "description": "How the memory was created. Known values: agent_written (agent wrote during interaction), llm_extracted (extracted by post-processing LLM), user_authored (human directly edited), migrated (imported from another format).",
+          "enum": ["agent_written", "llm_extracted", "user_authored", "migrated"]
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Session identifier from the source runtime."
+        },
+        "interaction_id": {
+          "type": "string",
+          "description": "Specific interaction or message identifier within the session."
+        },
+        "identity_version": {
+          "type": "integer",
+          "description": "The identity layer version that was active when this memory was created. Links what the agent did to who the agent was at the time. See §3.1.10.",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "TemporalMetadata": {
+      "title": "Temporal Metadata",
+      "description": "Temporal context for memory consolidation and conflict resolution. See §3.1.4.",
+      "type": "object",
+      "required": ["created_at"],
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "description": "When the memory record was created in the neutral format.",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": ["string", "null"],
+          "description": "Last modification time.",
+          "format": "date-time"
+        },
+        "observed_at": {
+          "type": ["string", "null"],
+          "description": "When the underlying fact or event was originally observed (may differ from created_at if extracted asynchronously).",
+          "format": "date-time"
+        },
+        "valid_from": {
+          "type": ["string", "null"],
+          "description": "Start of temporal validity window.",
+          "format": "date-time"
+        },
+        "valid_until": {
+          "type": ["string", "null"],
+          "description": "End of temporal validity window. Null means 'still current'.",
+          "format": "date-time"
+        },
+        "last_accessed_at": {
+          "type": ["string", "null"],
+          "description": "Last access time for relevance scoring and memory decay.",
+          "format": "date-time"
+        },
+        "access_count": {
+          "type": "integer",
+          "description": "Number of times this memory has been accessed/retrieved.",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "EntityReference": {
+      "title": "Entity Reference",
+      "description": "A named entity referenced by a memory record. See §3.1.5.",
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Entity name (e.g., 'Acme Corp', 'Jane')."
+        },
+        "type": {
+          "type": "string",
+          "description": "Entity type. Known values: person, organization, project, location, tool, service, other.",
+          "enum": ["person", "organization", "project", "location", "tool", "service", "other"],
+          "x-unknown-default": "other"
+        },
+        "role": {
+          "type": "string",
+          "description": "The entity's role in the context of this memory (e.g., 'employer', 'colleague')."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Embedding": {
+      "title": "Embedding",
+      "description": "A pre-computed embedding vector tagged by model. See §3.1.6. Embeddings are derivative of content and can always be recomputed.",
+      "type": "object",
+      "required": ["model", "dimensions", "vector", "computed_at", "source"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Embedding model identifier in 'provider/model' format (e.g., 'openai/text-embedding-3-small')."
+        },
+        "dimensions": {
+          "type": "integer",
+          "description": "Vector dimensionality.",
+          "minimum": 1
+        },
+        "vector": {
+          "type": "array",
+          "description": "The embedding vector.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "computed_at": {
+          "type": "string",
+          "description": "When this embedding was computed.",
+          "format": "date-time"
+        },
+        "source": {
+          "type": "string",
+          "description": "Who computed this embedding. Known values: runtime, sync_service, import_adapter. Validators SHOULD warn on unknown values but MUST NOT reject them — unknown sources are treated as 'runtime' per §8.2.",
+          "enum": ["runtime", "sync_service", "import_adapter"],
+          "x-unknown-default": "runtime"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
