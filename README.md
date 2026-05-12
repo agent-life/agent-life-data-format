@@ -3,7 +3,7 @@
 **An open, portable data format for AI agent state.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.1-orange.svg)](SPECIFICATION.md)
+[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.2-orange.svg)](SPECIFICATION.md)
 
 ---
 
@@ -122,7 +122,7 @@ Machine-readable schemas for all ALF data structures are in the [`schemas/`](sch
 
 ## Status
 
-This specification is at **Release Candidate** (`1.0.0-rc.1`). The data model is stable. We are soliciting feedback from agent framework developers before finalizing v1.0.0.
+This specification is at **Release Candidate** (`1.0.0-rc.2`). The data model is stable. We are soliciting feedback from agent framework developers before finalizing v1.0.0.
 
 **What's next:**
 - Reference adapter implementations (OpenClaw, ZeroClaw)
