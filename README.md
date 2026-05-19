@@ -3,7 +3,7 @@
 **An open, portable data format for AI agent state.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.2-orange.svg)](SPECIFICATION.md)
+[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.3-orange.svg)](SPECIFICATION.md)
 
 ---
 

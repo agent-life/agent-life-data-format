@@ -1554,6 +1554,8 @@ This section documents key design decisions with their rationale. Each entry rec
 
 13. **Credential-to-capability linkage.** Bidirectional optional linkage (§3.4.2, §3.2.6). Credentials carry `capabilities_granted` (names of capabilities they enable). Capabilities carry `credential_ids` (UUIDs of credentials they require). Both are informational and optional — many credentials are general-purpose (one API key powering multiple capabilities) and many capabilities need no credentials (intrinsic LLM abilities). The linkage helps importers wire up auth automatically and report missing credentials as warnings.
 
+14. **Vault as an explicit, agent-managed store.** The Layer 4 credential vault is populated explicitly — an agent or user adds each credential deliberately and chooses what goes in. It is not auto-populated by scraping a runtime's keystore. This keeps the vault a deliberate, auditable record the agent controls: provisioned accounts (email, messaging) are saved on the agent's own initiative so they survive a runtime port, while the plaintext descriptors (§3.4) stay visible for surgical delete. The vault key never enters the archive (§3.4.1), so a synced vault is portable ciphertext that needs the separately-held key to unlock.
+
 ## 12. Roadmap
 
 1. **Publish JSON Schema definitions** — formalize the schemas in §3 as JSON Schema files (see `schemas/` directory).
