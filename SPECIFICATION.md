@@ -1,7 +1,7 @@
 # Agent Life Format (ALF) — Specification
 
-**Version:** 1.0.0-rc.2  
-**Date:** 2026-05-10  
+**Version:** 1.0.0-rc.4  
+**Date:** 2026-06-19  
 **Status:** Release Candidate  
 **Repository:** https://github.com/agent-life/agent-life-data-format  
 **Site:** https://agent-life.ai  
