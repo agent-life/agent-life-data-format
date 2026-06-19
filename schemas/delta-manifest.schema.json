@@ -143,6 +143,23 @@
             }
           },
           "additionalProperties": true
+        },
+        "raw": {
+          "type": "object",
+          "description": "Present if verbatim raw/{runtime}/ source files changed. The delta carries the changed files at their full raw/{runtime}/... path so a reader rebuilding a snapshot can overlay them onto the base raw tree; deltas otherwise only touch the structured layers, which would leave a same-runtime, raw-preferred restore frozen at the snapshot.",
+          "properties": {
+            "changed": {
+              "type": "array",
+              "description": "Full raw/{runtime}/... archive paths carried in this delta (created or updated since the base).",
+              "items": { "type": "string" }
+            },
+            "deleted": {
+              "type": "array",
+              "description": "Full raw/{runtime}/... archive paths removed since the base.",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true

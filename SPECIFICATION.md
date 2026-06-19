@@ -1022,10 +1022,13 @@ delta-seq-1248.alf-delta
 ├── principals.json        # Only present if principals changed
 ├── memory/
 │   └── delta.jsonl        # Only new/modified/deleted memory records
-└── credentials.json       # Only present if credentials changed
+├── credentials.json       # Only present if credentials changed
+└── raw/{runtime}/...      # Only the verbatim source files that changed
 ```
 
 Each delta record includes an `operation` field: `create`, `update`, `delete` (soft-delete with tombstone).
+
+A delta also carries the **verbatim `raw/{runtime}/` source files that changed** since the base, recorded in `changes.raw` as `changed` (paths present in the bundle) and `deleted` (paths removed). A reader rebuilding a snapshot overlays these onto the base raw tree. This is mandatory: deltas would otherwise touch only the structured layers, and a same-runtime restore — which reconstructs the workspace from the lossless raw tree in preference to the structured layers — would be frozen at the snapshot, silently dropping every post-snapshot change even though the sequence and memory counts look current.
 
 #### 4.3.1 Sync Cursors — Sequence Numbers
 
