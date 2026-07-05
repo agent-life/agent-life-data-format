@@ -253,7 +253,7 @@
     },
     "MemoryPartition": {
       "title": "Memory Partition",
-      "description": "A time-based memory partition. Sealed partitions are immutable and can be cached aggressively. See §4.1.1.",
+      "description": "A time-based memory partition. Records file by effective timestamp (observed_at ?? created_at). Sealed partitions are a cache hint that no new records are expected for the period, not an immutability guarantee. See §4.1.1.",
       "type": "object",
       "required": ["file", "from", "record_count", "sealed"],
       "properties": {
@@ -278,7 +278,7 @@
         },
         "sealed": {
           "type": "boolean",
-          "description": "Whether this partition is immutable. Sealed partitions cover completed time periods and never change."
+          "description": "Advisory cache hint: true means the partition covers a completed period for which no new records are expected, so it MAY be cached aggressively. Not an immutability guarantee — an update/delete of a record whose effective timestamp falls here MAY rewrite the partition on rebuild (which changes its hash). See §4.1.1."
         }
       },
       "additionalProperties": true

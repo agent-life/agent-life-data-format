@@ -1,6 +1,6 @@
 # ALF JSON Schemas
 
-JSON Schema definitions for the Agent Life Format (ALF) v1.0.0-rc.4.
+JSON Schema definitions for the Agent Life Format (ALF) v1.0.0-rc.5.
 
 These schemas formalize the data layer specifications in the [ALF Specification](../SPECIFICATION.md). They use [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12/schema).
 

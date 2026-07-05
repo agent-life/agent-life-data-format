@@ -1,7 +1,7 @@
 # Agent Life Format (ALF) — Specification
 
-**Version:** 1.0.0-rc.4  
-**Date:** 2026-06-19  
+**Version:** 1.0.0-rc.5  
+**Date:** 2026-07-05  
 **Status:** Release Candidate  
 **Repository:** https://github.com/agent-life/agent-life-data-format  
 **Site:** https://agent-life.ai  
@@ -165,6 +165,10 @@ Each memory record MUST contain:
 | `embeddings` | array of object | No | Pre-computed embedding vectors, tagged by model. See §3.1.6. |
 | `related_records` | array of object | No | Links to other memory records with typed relationships. See §3.1.12. |
 | `raw_source_format` | object | No | Opaque blob preserving the original runtime-specific representation for lossless round-trip. |
+
+**Record-identity stability.** Adapters SHOULD assign memory-record IDs such that re-extracting an unchanged record from the same source yields the same `id`. An ID MUST NOT be derived solely from a record's ordinal position within a source file, since in-place edits to that file would then reassign the ID to different content. Content-addressed IDs, native-store-key-derived IDs, and IDs carried forward by base-aware reconciliation all satisfy this.
+
+A sync pipeline MAY rewrite a freshly extracted record's `id` and temporal anchors (`temporal.created_at`, `temporal.observed_at`) to continue the identity of a prior record with equal or near-equal `content` ("reconciliation"). When it does, `created_at`/`observed_at` are carried from the prior record (so the record keeps its original partition anchor — see §4.1.1) and `updated_at` reflects the modification. See §11, decision #15.
 
 #### 3.1.2 Memory Types
 
@@ -386,7 +390,7 @@ The identity version timeline and memory timestamps are both present in the form
 
 #### 3.1.11 Hard Deletion and Data Purge
 
-**Problem:** Section 3.1.8 defines soft deletes (tombstones) as the default deletion mechanism, and §7.2.2 states that sealed partitions are immutable. However, soft deletes are legally insufficient when a user exercises GDPR Article 17 ("right to erasure"), CCPA deletion rights, or simply needs to purge accidentally memorized sensitive data (passwords, government IDs, medical information). The format and sync protocol must support hard deletion that physically removes content.
+**Problem:** Section 3.1.8 defines soft deletes (tombstones) as the default deletion mechanism, and sealed partitions (§7.2.2) are, in normal operation, written once and cached widely across clients and regions. However, soft deletes are legally insufficient when a user exercises GDPR Article 17 ("right to erasure"), CCPA deletion rights, or simply needs to purge accidentally memorized sensitive data (passwords, government IDs, medical information). The format and sync protocol must support hard deletion that physically removes content.
 
 **Two deletion scopes:**
 
@@ -926,9 +930,9 @@ agent-snapshot.alf
 ├── memory/
 │   ├── index.json         # Partition inventory and memory-level metadata
 │   ├── partitions/
-│   │   ├── 2025-Q3.jsonl  # Sealed partition: Jul–Sep 2025 (immutable)
-│   │   ├── 2025-Q4.jsonl  # Sealed partition: Oct–Dec 2025 (immutable)
-│   │   └── 2026-Q1.jsonl  # Current partition (mutable until sealed)
+│   │   ├── 2025-Q3.jsonl  # Sealed partition: Jul–Sep 2025 (completed period)
+│   │   ├── 2025-Q4.jsonl  # Sealed partition: Oct–Dec 2025 (completed period)
+│   │   └── 2026-Q1.jsonl  # Current partition (open period)
 │   └── embeddings/        # Optional: pre-computed embedding vectors
 │       └── vectors.bin    # Binary format for compactness
 ├── attachments.json       # Workspace artifact index (Tier 2 included, Tier 3 reference-only)
@@ -950,14 +954,14 @@ agent-snapshot.alf
 
 #### 4.1.1 Time-Based Memory Partitioning
 
-Memory records are partitioned by time period. The default partition granularity is **quarterly** (e.g., `2025-Q3.jsonl`), but adapters MAY use monthly granularity for high-activity agents. Each partition is a JSONL file containing all memory records whose `temporal.created_at` falls within that period.
+Memory records are partitioned by time period. The default partition granularity is **quarterly** (e.g., `2025-Q3.jsonl`), but adapters MAY use monthly granularity for high-activity agents. Each partition is a JSONL file containing all memory records whose **effective timestamp** falls within that period. A record's effective timestamp is `temporal.observed_at` when present, otherwise `temporal.created_at`. (Episodic records extracted asynchronously carry the event time in `observed_at`, so they file by when the event happened rather than by extraction time.)
 
 **Sealed vs. unsealed partitions:**
 
-- A **sealed** partition covers a completed time period. Its contents are immutable — new records from that period cannot be added (in practice, all records for a past quarter already exist). Sealed partitions can be cached aggressively by clients and the sync service.
-- The **current (unsealed)** partition covers the ongoing time period. It is the only partition that changes during normal operation. New memory records are appended here; status changes to existing records (supersession, deletion) create new records in the current partition that reference the old record's ID.
+- A **sealed** partition covers a completed time period — a descriptive hint that no *new* records are expected for that period, so readers and the sync service MAY cache it aggressively. `sealed` is **not** an immutability guarantee: a delta `update` or `delete` operation MAY target a record whose effective timestamp falls in a sealed partition, and compaction or snapshot rebuild MAY rewrite a sealed partition to fold such changes in. What is guaranteed is **re-export determinism**: re-exporting an agent whose records have not changed produces byte-identical partition files; only a genuine record mutation rewrites the partition that contains the affected record. (A record whose identity and temporal anchors are carried forward by reconciliation — §3.1.1 — keeps its original partition, so an in-place edit to a past-quarter record legitimately rewrites that quarter on rebuild.)
+- The **current (unsealed)** partition covers the ongoing time period. During normal operation, new memory records land here (by effective timestamp). Status changes to existing records MAY be expressed either as an in-place `update`/`delete` of the target record (which stays in its own effective-timestamp partition) or, when an auditable trail is wanted, as a new supersession record in the current partition that references the old record's ID (the `superseded`/`supersedes` lifecycle, §3.1.8).
 
-**Why this matters:** For a years-old agent, a full export is still one ZIP, but most of it is sealed partitions that haven't changed since they were first written. A client that already has last quarter's sealed partitions only needs to download the current partition and any newly sealed ones. This directly maps to efficient cloud storage (§7.2) — sealed partitions are written once to object storage and never touched again.
+**Why this matters:** For a years-old agent, a full export is still one ZIP, but most of it is sealed partitions that have not changed since they were first written. A client that already has last quarter's sealed partitions only needs to download the current partition plus any sealed partition whose hash changed. This directly maps to efficient cloud storage (§7.2) — sealed partitions that have not changed are not re-transferred. The compliance model of §3.1.11 is unaffected: a hard purge still *replaces* a partition blob rather than mutating one in place (see §11, decision #9).
 
 ### 4.2 Manifest Schema
 
@@ -1177,11 +1181,11 @@ The recommended cloud storage pattern treats **deltas as events** and **snapshot
 
 Time-based memory partitions (§4.1.1) align directly with the cloud storage model:
 
-- **Sealed partitions** are written once to object storage and never touched again under normal operation. They can be served with long cache lifetimes and replicated cheaply across regions. The sole exception is a hard purge for compliance (§3.1.11), which replaces the partition rather than modifying it.
-- **The current (unsealed) partition** is the only object that changes. On each compaction, the service rewrites the current partition by applying recent deltas. Once a time period ends, the partition is sealed and becomes immutable.
-- **Full snapshot cost** is dominated by the initial upload. Subsequent syncs only transfer the current partition's changes (via deltas), making the marginal cost proportional to activity, not total agent size.
+- **Sealed partitions** are, in the common case, written once and left untouched: no new records are expected for a completed period, so they can be served with long cache lifetimes and replicated cheaply across regions. `sealed` is advisory (§4.1.1), so two operations MAY still rewrite a sealed partition — a hard purge for compliance (§3.1.11), which *replaces* the partition rather than modifying it, and folding a past-quarter `update`/`delete` delta on compaction or rebuild. A rewritten partition gets a new hash, so caches invalidate naturally. Sealed partitions whose contents have not changed are never re-transmitted.
+- **The current (unsealed) partition** changes on every compaction as the service applies recent deltas; a delta whose target's effective timestamp lies in an earlier period also touches that earlier partition. Once a time period ends, its partition is marked `sealed` — a cache hint, not a write-lock.
+- **Full snapshot cost** is dominated by the initial upload. Subsequent syncs only transfer the partitions that actually changed (via deltas), making the marginal cost proportional to activity, not total agent size.
 
-This means a 3-year-old agent with 50 MB of total memory doesn't cost more to sync incrementally than a 1-month-old agent — the sealed partitions are already in storage and never re-transferred.
+This means a 3-year-old agent with 50 MB of total memory doesn't cost more to sync incrementally than a 1-month-old agent — the sealed partitions are already in storage and, absent an edit to a record they contain, are never re-transferred.
 
 #### 7.2.3 Sequence-Based Delta Retrieval
 
@@ -1200,10 +1204,10 @@ The format and protocol are designed so that the primary cost drivers for the sy
 
 | Cost Driver | Scales With | Mitigation |
 |-------------|-------------|------------|
-| Object storage (bulk data) | Total agent size | Sealed partitions written once, never rewritten. Large artifacts excluded by default (§3.1.9). |
+| Object storage (bulk data) | Total agent size | Sealed partitions written once and rewritten only when a record they contain is edited or purged. Large artifacts excluded by default (§3.1.9). |
 | Metadata index (database) | Number of deltas per agent | Compaction collapses deltas into snapshots. Index rows are small (ID, sequence, blob pointer). |
-| Bandwidth (transfer) | Sync frequency × delta size | Deltas are small (< 100 KB typical). Sealed partitions are cached and never re-transferred. |
-| Compute (compaction) | Sync frequency × agent count | Background batch job. JSONL append — no parsing or merging required. |
+| Bandwidth (transfer) | Sync frequency × delta size | Deltas are small (< 100 KB typical). Unchanged sealed partitions are cached and not re-transferred. |
+| Compute (compaction) | Sync frequency × agent count | Background batch job. Append-only deltas fold in cheaply; once `update`/`delete` deltas are present, compaction is a merge over the affected partitions rather than a pure append. |
 
 The service should be viable at low cost per agent, enabling a free tier for personal use and paid tiers for high-frequency sync or multi-device scenarios.
 
@@ -1489,9 +1493,9 @@ For each supported runtime:
 
 1. Export an agent with memories spanning multiple quarters. Verify the snapshot contains one JSONL file per quarter under `memory/partitions/`.
 2. Verify all partitions except the current one have `sealed: true` in the manifest.
-3. Verify each record's `temporal.created_at` falls within its partition's `from`/`to` range.
-4. Re-export the same agent after adding new memories. Verify sealed partition files are byte-identical to the previous export — only the current partition changed.
-5. Verify that a status change (supersession or deletion) of a record in a sealed partition creates a new record in the current partition (sealed partitions are never rewritten).
+3. Verify each record's **effective timestamp** (`temporal.observed_at` if present, else `temporal.created_at`) falls within its partition's `from`/`to` range.
+4. Re-export the same agent with no record changes. Verify every partition file — sealed and current — is byte-identical to the previous export (re-export determinism). Then edit or add a record and re-export: verify only the partition containing the affected record (by effective timestamp) changes, and every other partition remains byte-identical.
+5. Take a record whose effective timestamp is in an earlier (sealed) quarter. Apply an `update` and then a `delete` to it via delta + rebuild. Verify the record round-trips staying in its original effective-timestamp partition (that partition is rewritten with a new hash; other partitions are untouched). Verify the alternative supersession strategy still validates: a new `superseded`/`supersedes` record in the current partition referencing the old record's ID is an accepted, optional way to express the same change.
 6. Generate a high-activity synthetic agent. Verify the adapter can switch to monthly partitioning and that the manifest correctly reflects monthly `from`/`to` ranges.
 
 ### 10.12 Storage and Transport Tests
@@ -1541,7 +1545,7 @@ This section documents key design decisions with their rationale. Each entry rec
 
 5. **AIEOS alignment.** Compatible superset with opinionated field promotion (see §3.2.6). Fields that map to real agent behavior (names, OCEAN traits, neural matrix, linguistics, capabilities, motivations) are promoted to first-class structured fields. Fields rooted in fictional character design (MBTI, D&D moral alignment, physicality/somatotype, bio metadata) are preserved for lossless round-trip via `aieos_extensions` but not promoted. This provides full ZeroClaw/AIEOS round-trip fidelity without elevating design choices that lack broad applicability as schema primitives.
 
-6. **Storage, transport, and partitioning.** Memory is partitioned by time period (quarterly by default) with sealed/unsealed semantics (§4.1.1). Sealed partitions are immutable and cache-friendly. The sync protocol uses monotonic sequence numbers as the primary cursor (§4.3.1), not timestamps — avoiding clock skew and boundary ambiguity. The cloud storage model follows an event-sourcing pattern (§7.2): deltas as append-only events in object storage, snapshots as periodic compacted projections, metadata index in a lightweight database. This keeps costs proportional to activity rather than total agent size, and ensures all operations (push delta, pull deltas, full restore) are index lookups + blob fetches with no server-side parsing.
+6. **Storage, transport, and partitioning.** Memory is partitioned by time period (quarterly by default) with sealed/unsealed semantics (§4.1.1). Sealed partitions are cache-friendly (their `sealed` flag was later refined from a strict immutability guarantee to an advisory cache hint — see decision #15). The sync protocol uses monotonic sequence numbers as the primary cursor (§4.3.1), not timestamps — avoiding clock skew and boundary ambiguity. The cloud storage model follows an event-sourcing pattern (§7.2): deltas as append-only events in object storage, snapshots as periodic compacted projections, metadata index in a lightweight database. This keeps costs proportional to activity rather than total agent size, and ensures all operations (push delta, pull deltas, full restore) are index lookups + blob fetches with no server-side parsing.
 
 7. **Memory-to-identity lineage.** Each memory record's `source` object includes an optional `identity_version` integer (§3.1.10) linking what the agent did to who the agent was at the time. This makes lineage explicit and directly queryable rather than requiring timestamp correlation between the identity version history and memory creation times. The field reuses the identity layer's existing version counter (§3.2.3) — no new versioning mechanism needed. Adapters SHOULD stamp the current version on export. Records without the field (migrated data) have unknown lineage, preserving backward compatibility.
 
@@ -1558,6 +1562,8 @@ This section documents key design decisions with their rationale. Each entry rec
 13. **Credential-to-capability linkage.** Bidirectional optional linkage (§3.4.2, §3.2.6). Credentials carry `capabilities_granted` (names of capabilities they enable). Capabilities carry `credential_ids` (UUIDs of credentials they require). Both are informational and optional — many credentials are general-purpose (one API key powering multiple capabilities) and many capabilities need no credentials (intrinsic LLM abilities). The linkage helps importers wire up auth automatically and report missing credentials as warnings.
 
 14. **Vault as an explicit, agent-managed store.** The Layer 4 credential vault is populated explicitly — an agent or user adds each credential deliberately and chooses what goes in. It is not auto-populated by scraping a runtime's keystore. This keeps the vault a deliberate, auditable record the agent controls: provisioned accounts (email, messaging) are saved on the agent's own initiative so they survive a runtime port, while the plaintext descriptors (§3.4) stay visible for surgical delete. The vault key never enters the archive (§3.4.1), so a synced vault is portable ciphertext that needs the separately-held key to unlock.
+
+15. **Record identity is stable across re-extraction; partitions key on the effective timestamp; and sealing is advisory, not an immutability guarantee.** Adapters re-extract an agent's whole store on every sync, so a memory's identity must survive re-extraction: IDs are content-addressed or native-key-derived (never purely positional), and a sync pipeline may carry a prior record's `id` and temporal anchors forward when it recognizes the same memory (§3.1.1, §6). Because that carry-forward freezes `temporal.created_at` at first observation, and because episodic records are filed by when their event occurred, partitions key on the **effective timestamp** — `observed_at` if present, else `created_at` (§4.1.1) — matching every deployed writer. A record edited in place therefore keeps its original partition, which means `sealed` cannot be a hard immutability guarantee: it is a descriptive "this period is complete" cache hint, and `update`/`delete` may rewrite any partition on rebuild (§4.1.1, §7.2.2). The compliance model is unchanged — a hard purge still replaces a partition blob rather than mutating it (§3.1.11, decision #9) — and the `superseded`/`supersedes` lifecycle (§3.1.8) remains available for auditable replacement, now optional rather than required for every past-quarter edit. A `content_hash` field for identity was considered and rejected: it is derivable from `content`, has no consumer, and would make an older reader that re-extracts without the field emit a spurious update per record on downgrade; identity carry-forward via reconciliation achieves the same stability with no wire-format change. This amendment is non-breaking (MINOR under §8.2): no field is removed or retyped, the reused `observed_at` field already matches every deployed archive, and the softened `sealed` semantics only relax documented meaning.
 
 ## 12. Roadmap
 

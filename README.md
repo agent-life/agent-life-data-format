@@ -3,7 +3,7 @@
 **An open, portable data format for AI agent state.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.4-orange.svg)](SPECIFICATION.md)
+[![Spec Version](https://img.shields.io/badge/spec-1.0.0--rc.5-orange.svg)](SPECIFICATION.md)
 
 ---
 
@@ -29,8 +29,8 @@ nova-agent.alf
 ├── credentials.json       # Encrypted credentials (zero-knowledge)
 ├── memory/
 │   └── partitions/
-│       ├── 2025-Q3.jsonl  # Sealed partition (immutable)
-│       ├── 2025-Q4.jsonl  # Sealed partition (immutable)
+│       ├── 2025-Q3.jsonl  # Sealed partition (completed period)
+│       ├── 2025-Q4.jsonl  # Sealed partition (completed period)
 │       └── 2026-Q1.jsonl  # Current partition
 ├── attachments.json       # Workspace artifact index
 ├── artifacts/             # Small portable files (<100KB)
@@ -76,7 +76,7 @@ ALF organizes agent state into four layers:
 
 - **Dual identity representation** — both structured fields (machine-readable) and prose blocks (LLM-interpreted). Each runtime uses whichever it supports.
 - **Store-and-tag embeddings** — vectors are preserved as-is from the source runtime, tagged by model. No mandated embedding model. Re-embedding happens at the edges.
-- **Time-based partitioning** — memory is partitioned quarterly. Sealed partitions are immutable and cache-friendly. Only the current partition changes.
+- **Time-based partitioning** — memory is partitioned quarterly by effective timestamp. Sealed partitions are a cache-friendly hint that a period is complete; re-export is deterministic, so a partition only changes when a record it contains does.
 - **Sequence-based sync** — monotonic sequence numbers as the sync cursor, not timestamps. No clock skew, no boundary ambiguity.
 - **Three-tier artifacts** — managed agent state in `raw/`, small portable files in `artifacts/`, large files as reference-only. Classification by purpose and size, not binary vs. text.
 - **Forward compatibility** — unknown fields are preserved on round-trip. Unknown enum values get safe defaults. No data is silently dropped.
@@ -122,7 +122,7 @@ Machine-readable schemas for all ALF data structures are in the [`schemas/`](sch
 
 ## Status
 
-This specification is at **Release Candidate** (`1.0.0-rc.4`). The data model is stable. We are soliciting feedback from agent framework developers before finalizing v1.0.0.
+This specification is at **Release Candidate** (`1.0.0-rc.5`). The data model is stable. We are soliciting feedback from agent framework developers before finalizing v1.0.0.
 
 **What's next:**
 - Reference adapter implementations (OpenClaw, ZeroClaw)
