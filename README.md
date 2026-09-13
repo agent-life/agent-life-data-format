@@ -124,10 +124,28 @@ Machine-readable schemas for all ALF data structures are in the [`schemas/`](sch
 
 This specification is at **Release Candidate** (`1.0.0-rc.5`). The data model is stable. We are soliciting feedback from agent framework developers before finalizing v1.0.0.
 
-**What's next:**
-- Reference adapter implementations (OpenClaw, ZeroClaw)
-- Sync service API specification (separate repository)
-- Round-trip test suite
+## Documentation
+
+### Framework guides
+
+- [OpenClaw multi-agent guide](https://agent-life.ai/openclaw-guide): Back up several OpenClaw agents. Covers per-workspace isolation, agent selection, memory curation, restore, and the encrypted secrets vault.
+- [ZeroClaw multi-agent guide](https://agent-life.ai/zeroclaw-guide): Back up several ZeroClaw agents. Covers per-agent isolation from the shared `brain.db`, agent selection, restore, and the encrypted secrets vault.
+- [Hermes multi-agent guide](https://agent-life.ai/hermes-guide): Back up several Hermes agents. Covers per-profile isolation, session and curated memory, agent selection, restore, and the encrypted secrets vault.
+
+### Reference
+
+- [alf CLI reference](https://agent-life.ai/cli): Every `alf` command with its flags, JSON output schema, error codes, and configuration.
+- [Run ALF as an MCP server](https://agent-life.ai/mcp): Run `alf mcp serve` from an MCP-capable agent host. Covers the 13 tools and the watch loop that syncs memory without spending LLM tokens.
+- [API reference](https://agent-life.ai/api): Interactive reference for the Agent Life service API. Covers authentication, agents, snapshots, and deltas.
+
+### Format and internals
+
+- [ALF specification](https://agent-life.ai/specification.html): The open, portable format for the complete durable state of an AI agent: memories, identity, relationships, and credentials.
+- [How ALF syncs agent memory](https://agent-life.ai/delta-sync.html): Why a delta is a changelog of records, not a text patch. Covers the local sync lifecycle, worked examples for each framework, and the append-only backend ledger.
+- [OpenClaw memory mapping](https://agent-life.ai/openclaw_memory.html): How the OpenClaw adapter maps workspace memory, identity, principals, and credentials to ALF.
+- [ZeroClaw memory mapping](https://agent-life.ai/zeroclaw_memory.html): How the ZeroClaw adapter maps trait-based memory, identity, principals, and credentials to ALF.
+- [Hermes memory mapping](https://agent-life.ai/hermes_memory.html): How the Hermes adapter maps curated memory, session history, identity, principals, and credentials to ALF.
+
 
 ## Contributing
 
